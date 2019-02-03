@@ -30,6 +30,8 @@ type UConn struct {
 	GetSessionID func(ticket []byte) [32]byte
 
 	greaseSeed [ssl_grease_last_index]uint16
+
+	extCompressCerts bool
 }
 
 // UClient returns a new uTLS client, with behavior depending on clientHelloID.
