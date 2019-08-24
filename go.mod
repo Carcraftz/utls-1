@@ -1,5 +1,7 @@
 module gitlab.com/yawning/utls.git
 
+go 1.14
+
 require (
 	git.schwanenlied.me/yawning/bsaes.git v0.0.0-20190320102049-26d1add596b6
 	github.com/dsnet/compress v0.0.1
