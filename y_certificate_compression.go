@@ -72,6 +72,7 @@ func (e *CompressCertificateExtension) Read(b []byte) (int, error) {
 type compressedCertificateMsg struct {
 	raw []byte
 
+	algID                        uint16
 	algorithm                    CertCompressionAlgo
 	uncompressedLength           uint32
 	compressedCertificateMessage []byte
@@ -82,7 +83,18 @@ func (m *compressedCertificateMsg) marshal() []byte {
 		return m.raw
 	}
 
-	panic("utls: compressedCertificateMsg.marshal() not actually implemented")
+	var certMsg cryptobyte.Builder
+	certMsg.AddUint8(typeCompressedCertificate)
+	certMsg.AddUint24LengthPrefixed(func(certificate *cryptobyte.Builder) {
+		certificate.AddUint16(m.algID)
+		certificate.AddUint24(m.uncompressedLength)
+		certificate.AddUint24LengthPrefixed(func(compressed *cryptobyte.Builder) {
+			compressed.AddBytes(m.compressedCertificateMessage)
+		})
+	})
+
+	m.raw = certMsg.BytesOrPanic()
+	return m.raw
 }
 
 func (m *compressedCertificateMsg) unmarshal(data []byte) bool {
@@ -90,8 +102,7 @@ func (m *compressedCertificateMsg) unmarshal(data []byte) bool {
 
 	s := cryptobyte.String(data[4:])
 
-	var algID uint16
-	if !s.ReadUint16(&algID) {
+	if !s.ReadUint16(&m.algID) {
 		return false
 	}
 	if !s.ReadUint24(&m.uncompressedLength) {
@@ -100,7 +111,12 @@ func (m *compressedCertificateMsg) unmarshal(data []byte) bool {
 	if !readUint24LengthPrefixed(&s, &m.compressedCertificateMessage) {
 		return false
 	}
-	m.algorithm = CertCompressionAlgo(algID)
+
+	if m.uncompressedLength >= 1<<17 {
+		return false
+	}
+
+	m.algorithm = CertCompressionAlgo(m.algID)
 
 	return true
 }
