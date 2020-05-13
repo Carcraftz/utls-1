@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"log"
 	"sync/atomic"
 	"time"
 )
@@ -192,6 +193,7 @@ func (hs *clientHandshakeStateTLS13) processHelloRetryRequest() error {
 	hs.transcript.Write(hs.serverHello.marshal())
 
 	if hs.serverHello.serverShare.group != 0 {
+		log.Fatalf("hs.serverHello.serverShare.group.")
 		c.sendAlert(alertDecodeError)
 		return errors.New("tls: received malformed key_share extension")
 	}
@@ -355,6 +357,7 @@ func (hs *clientHandshakeStateTLS13) processServerHello() error {
 	}
 
 	if hs.serverHello.selectedGroup != 0 {
+		log.Fatalf("hs.serverHello.selectedGroup")
 		c.sendAlert(alertDecodeError)
 		return errors.New("tls: malformed key_share extension")
 	}
@@ -517,6 +520,7 @@ func (hs *clientHandshakeStateTLS13) readServerCertificate() error {
 	}
 
 	if len(certMsg.certificate.Certificate) == 0 {
+		log.Fatalf("certMsg.certificate.Certificate")
 		c.sendAlert(alertDecodeError)
 		return errors.New("tls: received empty certificates message")
 	}
