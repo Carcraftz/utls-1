@@ -525,15 +525,13 @@ func (uconn *UConn) ApplyPreset(p *ClientHelloSpec) error {
 	// Currently, GREASE is assumed to come from BoringSSL
 	grease_bytes := make([]byte, 2*ssl_grease_last_index)
 	grease_extensions_seen := 0
+	var grease_value_1 uint16
 	_, err = io.ReadFull(uconn.config.rand(), grease_bytes)
 	if err != nil {
 		return errors.New("tls: short read from Rand: " + err.Error())
 	}
 	for i := range uconn.greaseSeed {
 		uconn.greaseSeed[i] = binary.LittleEndian.Uint16(grease_bytes[2*i : 2*i+2])
-	}
-	if uconn.greaseSeed[ssl_grease_extension1] == uconn.greaseSeed[ssl_grease_extension2] {
-		uconn.greaseSeed[ssl_grease_extension2] ^= 0x1010
 	}
 
 	hello.CipherSuites = make([]uint16, len(p.CipherSuites))
@@ -558,8 +556,12 @@ func (uconn *UConn) ApplyPreset(p *ClientHelloSpec) error {
 			switch grease_extensions_seen {
 			case 0:
 				ext.Value = GetBoringGREASEValue(uconn.greaseSeed, ssl_grease_extension1)
+				grease_value_1 = ext.Value
 			case 1:
 				ext.Value = GetBoringGREASEValue(uconn.greaseSeed, ssl_grease_extension2)
+				if ext.Value == grease_value_1 {
+					ext.Value ^= 0x1010
+				}
 				ext.Body = []byte{0}
 			default:
 				return errors.New("at most 2 grease extensions are supported")
