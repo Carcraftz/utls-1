@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/refraction-networking/utls/cpu"
+	"github.com/ulixee/utls/cpu"
 )
 
 const (

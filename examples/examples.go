@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/refraction-networking/utls"
+	tls "github.com/ulixee/utls"
 	"golang.org/x/net/http2"
 )
 

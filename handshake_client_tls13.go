@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"log"
 	"sync/atomic"
 	"time"
 )
@@ -33,6 +34,8 @@ type clientHandshakeStateTLS13 struct {
 	transcript    hash.Hash
 	masterSecret  []byte
 	trafficSecret []byte // client_application_traffic_secret_0
+
+	certCompAlgs []CertCompressionAlgo
 
 	uconn *UConn // [UTLS]
 }
@@ -190,6 +193,7 @@ func (hs *clientHandshakeStateTLS13) processHelloRetryRequest() error {
 	hs.transcript.Write(hs.serverHello.marshal())
 
 	if hs.serverHello.serverShare.group != 0 {
+		log.Fatalf("hs.serverHello.serverShare.group.")
 		c.sendAlert(alertDecodeError)
 		return errors.New("tls: received malformed key_share extension")
 	}
@@ -353,6 +357,7 @@ func (hs *clientHandshakeStateTLS13) processServerHello() error {
 	}
 
 	if hs.serverHello.selectedGroup != 0 {
+		log.Fatalf("hs.serverHello.selectedGroup")
 		c.sendAlert(alertDecodeError)
 		return errors.New("tls: malformed key_share extension")
 	}
@@ -484,16 +489,42 @@ func (hs *clientHandshakeStateTLS13) readServerCertificate() error {
 		}
 	}
 
-	certMsg, ok := msg.(*certificateMsgTLS13)
-	if !ok {
+	var (
+		certMsg    *certificateMsgTLS13
+		rawCertMsg []byte
+	)
+	switch v := msg.(type) {
+	case *certificateMsgTLS13:
+		certMsg, rawCertMsg = v, v.marshal()
+	case *compressedCertificateMsg:
+		var algOk bool
+		for _, alg := range hs.certCompAlgs {
+			if alg == v.algorithm {
+				algOk = true
+				break
+			}
+		}
+		if !algOk {
+			c.sendAlert(alertUnexpectedMessage)
+			return unexpectedMessageError(certMsg, msg)
+		}
+		certMsg, err = v.toCertificateMsg()
+		if err != nil {
+			c.sendAlert(alertBadCertificate)
+			return err
+		}
+		rawCertMsg = v.marshal()
+	default:
 		c.sendAlert(alertUnexpectedMessage)
 		return unexpectedMessageError(certMsg, msg)
 	}
+
 	if len(certMsg.certificate.Certificate) == 0 {
+		log.Fatalf("certMsg.certificate.Certificate")
 		c.sendAlert(alertDecodeError)
 		return errors.New("tls: received empty certificates message")
 	}
-	hs.transcript.Write(certMsg.marshal())
+	hs.transcript.Write(rawCertMsg)
 
 	c.scts = certMsg.certificate.SignedCertificateTimestamps
 	c.ocspResponse = certMsg.certificate.OCSPStaple
