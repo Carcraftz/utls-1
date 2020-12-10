@@ -619,6 +619,9 @@ func (uconn *UConn) ApplyPreset(p *ClientHelloSpec) error {
 	uconn.Extensions = make([]TLSExtension, len(p.Extensions))
 	copy(uconn.Extensions, p.Extensions)
 
+	// Check whether NPN extension actually exists
+	var haveNPN bool
+
 	// reGrease, and point things to each other
 	for _, e := range uconn.Extensions {
 		switch ext := e.(type) {
@@ -685,8 +688,15 @@ func (uconn *UConn) ApplyPreset(p *ClientHelloSpec) error {
 			}
 		case *CompressCertificateExtension:
 			uconn.HandshakeState.State13.CertCompAlgs = ext.Algorithms
+		case *NPNExtension:
+			haveNPN = true
 		}
 	}
+
+	// The default golang behavior in makeClientHello always sets NextProtoNeg if NextProtos is set,
+	// but NextProtos is also used by ALPN and our spec nmay not actually have a NPN extension
+	hello.NextProtoNeg = haveNPN
+
 	return nil
 }
 
