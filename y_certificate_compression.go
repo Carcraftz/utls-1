@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/dsnet/compress/brotli"
+	"github.com/andybalholm/brotli"
 	"golang.org/x/crypto/cryptobyte"
 )
 
@@ -124,7 +124,8 @@ func (m *compressedCertificateMsg) unmarshal(data []byte) bool {
 func (m *compressedCertificateMsg) toCertificateMsg() (*certificateMsgTLS13, error) {
 	var (
 		decompressed []byte
-		rd           io.ReadCloser
+		rd           io.Reader
+		rdc          io.ReadCloser
 		err          error
 	)
 
@@ -135,16 +136,17 @@ func (m *compressedCertificateMsg) toCertificateMsg() (*certificateMsgTLS13, err
 	compressed := bytes.NewBuffer(m.compressedCertificateMessage)
 	switch m.algorithm {
 	case CertCompressionZlib:
-		rd, err = zlib.NewReader(compressed)
+		rdc, err = zlib.NewReader(compressed)
+		rd = rdc
+		defer rdc.Close()
 	case CertCompressionBrotli:
-		rd, err = brotli.NewReader(compressed, nil)
+		rd = brotli.NewReader(compressed)
 	default:
 		return nil, fmt.Errorf("utls: unknown certificate compression algorithm: %v", m.algorithm)
 	}
 	if err != nil {
 		return nil, err
 	}
-	defer rd.Close()
 
 	decompressed = make([]byte, m.uncompressedLength)
 	if _, err = io.ReadFull(rd, decompressed); err != nil {
