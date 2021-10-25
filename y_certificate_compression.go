@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/dsnet/compress/brotli"
+	"github.com/andybalholm/brotli"
 	"golang.org/x/crypto/cryptobyte"
 )
 
@@ -137,7 +137,7 @@ func (m *compressedCertificateMsg) toCertificateMsg() (*certificateMsgTLS13, err
 	case CertCompressionZlib:
 		rd, err = zlib.NewReader(compressed)
 	case CertCompressionBrotli:
-		rd, err = brotli.NewReader(compressed, nil)
+		rd, err = brotli.NewReader(compressed)
 	default:
 		return nil, fmt.Errorf("utls: unknown certificate compression algorithm: %v", m.algorithm)
 	}
